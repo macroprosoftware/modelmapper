@@ -15,6 +15,7 @@
  */
 package org.modelmapper.internal;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -36,6 +37,7 @@ import org.modelmapper.spi.ConstantMapping;
 import org.modelmapper.spi.Mapping;
 import org.modelmapper.spi.MappingContext;
 import org.modelmapper.spi.MappingEngine;
+import org.modelmapper.spi.PropertyInfo;
 import org.modelmapper.spi.PropertyMapping;
 
 /**
@@ -254,8 +256,15 @@ public class MappingEngineImpl implements MappingEngine {
       mutator.setValue(destination,
           destinationValue == null ? Primitives.defaultValue(mutator.getType())
               : destinationValue);
-    if (destinationValue == null)
-      context.shadePath(propertyContext.destinationPath);
+    if (destinationValue == null){
+        boolean bandera = skipProperty(mapping, context.getSource());
+        //context.shadePath(propertyContext.destinationPath);
+        if (bandera) {
+
+        } else {
+            context.shadePath(destPath);
+        }
+    }
   }
 
   /**
@@ -377,4 +386,44 @@ public class MappingEngineImpl implements MappingEngine {
     if (destination != null && !destinationType.isAssignableFrom(destination.getClass()))
       errors.invalidProvidedDestinationInstance(destination, destinationType);
   }
+  
+  /**
+     * Método que verifica que exista la anotación JsonIgnore en los campos del
+     * DTO para ser ignorados en el mappeo a Entidad(Que no sean incluidos en la
+     * lista negra shadedPath y así las siguientes propiedades que inicien con
+     * el mismo path puedan ser mapeadas) ejemplo: Ignora la propiedad articulo
+     * ->@JsonIgnore (LstVenDetalle.InvArticulo.) pero la siguiente propiedad
+     * inv_articulo_id (LstVenDetalle.InvArticulo.id) sí la mapea
+ *
+     */
+    public static boolean skipProperty(MappingImpl mapping, Object source) {
+        PropertyMappingImpl property;
+        if (mapping instanceof PropertyMappingImpl) {
+            property = ((PropertyMappingImpl) mapping);
+        } else {
+            return false;
+        }
+
+        for (PropertyInfo sourceProperty : property.getSourceProperties()) {
+            try {
+                //Class c = Class.forName("com.fasterxml.jackson.annotation.JsonIgnore");
+                
+                for(Annotation annotation : sourceProperty.getType().getAnnotations()){
+                    if(annotation.annotationType().getClass().getName().equals("com.fasterxml.jackson.annotation.JsonIgnore")){
+                        return true;
+                    }
+                }
+                
+                /*if (sourceProperty.getAnnotation(c) != null) {
+                    return true;
+                }*/
+            } /*catch (ClassNotFoundException ex) {
+                throw new RuntimeException(ex.getMessage(), ex);
+            }*/ finally {
+                
+            }
+        }
+
+        return false;
+    }
 }
