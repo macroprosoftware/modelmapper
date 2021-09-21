@@ -15,6 +15,8 @@
  */
 package org.modelmapper.internal;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
@@ -83,6 +85,21 @@ interface PropertyInfoResolver<M extends Member, PI extends PropertyInfo> {
   static abstract class DefaultPropertyResolver<M extends Member, PI extends PropertyInfo>
       implements PropertyInfoResolver<M, PI> {
     public boolean isValid(M member) {
+        
+        /**
+         * Cambio de Victor conciliado por David al actualizar ModelMapper. No
+         * se encontró la manera de hacerse sin modificar la librería.
+         */
+        if (member instanceof AnnotatedElement) {
+            AnnotatedElement element = (AnnotatedElement) member;
+            for (Annotation annotation : element.getAnnotations()) {
+                String name = annotation.annotationType().getName();
+                if (name.contains("JsonIgnore") || name.contains("MapperIgnore")) {
+                    return false;
+                }
+            }
+        }
+        
       return !Modifier.isStatic(member.getModifiers()) && !member.isSynthetic();
     }
   }

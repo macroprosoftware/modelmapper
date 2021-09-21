@@ -22,6 +22,9 @@ import org.modelmapper.spi.MappingContext;
 
 import java.util.Collection;
 import java.util.Iterator;
+import org.hibernate.collection.internal.PersistentMap;
+import org.hibernate.collection.spi.PersistentCollection;
+import org.jboss.logging.Logger;
 
 /**
  * Converts {@link Collection} and array instances to {@link Collection} instances.
@@ -29,6 +32,9 @@ import java.util.Iterator;
  * @author Jonathan Halterman
  */
 public class MergingCollectionConverter implements ConditionalConverter<Object, Collection<Object>> {
+    
+    private final Logger logger = Logger.getLogger(getClass());
+    
   @Override
   public MatchResult match(Class<?> sourceType, Class<?> destinationType) {
     return Iterables.isIterable(sourceType) && Collection.class.isAssignableFrom(destinationType) ? MatchResult.FULL
@@ -41,11 +47,25 @@ public class MergingCollectionConverter implements ConditionalConverter<Object, 
     if (source == null)
       return null;
 
+    if(source instanceof PersistentCollection){
+        PersistentCollection pc = (PersistentCollection) source;
+        if(!pc.wasInitialized()){
+            return null;
+        }
+    }
+    
+    if(source instanceof PersistentMap){
+        PersistentMap pm = (PersistentMap) source;
+        if(!pm.wasInitialized()){
+            return null;
+        }
+    }
+    
     int sourceLength = Iterables.getLength(source);
     Collection<Object> originalDestination = context.getDestination();
     Collection<Object> destination = MappingContextHelper.createCollection(context);
     Class<?> elementType = MappingContextHelper.resolveDestinationGenericType(context);
-
+    
     int index = 0;
     for (Iterator<Object> iterator = Iterables.iterator(source); iterator.hasNext(); index++) {
       Object sourceElement = iterator.next();
